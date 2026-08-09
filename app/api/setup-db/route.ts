@@ -76,9 +76,9 @@ export async function GET() {
 
     // Query seeded college IDs for scoped inserts
     const collegesList = await sql`SELECT id, code FROM colleges`;
-    const vignan = collegesList.find(c => c.code === 'vignan');
-    const cbit = collegesList.find(c => c.code === 'cbit');
-    const anurag = collegesList.find(c => c.code === 'anurag');
+    const vignan = collegesList.find((c: any) => c.code === 'vignan');
+    const cbit = collegesList.find((c: any) => c.code === 'cbit');
+    const anurag = collegesList.find((c: any) => c.code === 'anurag');
 
     const vignanId = vignan ? vignan.id : 1;
     const cbitId = cbit ? cbit.id : 2;
