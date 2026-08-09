@@ -33,7 +33,9 @@ export default function CollegeHome() {
         // Load colleges
         const cRes = await fetch("/api/colleges");
         const cData = await cRes.json();
-        const list: College[] = cData.success ? cData.colleges : FALLBACK_COLLEGES;
+        const list: College[] = (cData.success && Array.isArray(cData.colleges) && cData.colleges.length > 0)
+          ? cData.colleges
+          : FALLBACK_COLLEGES;
         const found = list.find((c) => c.code === code) || null;
         setCollege(found);
 

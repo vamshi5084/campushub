@@ -50,7 +50,9 @@ export default function QueriesPage() {
       try {
         const cRes = await fetch("/api/colleges");
         const cData = await cRes.json();
-        const list: College[] = cData.success ? cData.colleges : FALLBACK_COLLEGES;
+        const list: College[] = (cData.success && Array.isArray(cData.colleges) && cData.colleges.length > 0)
+          ? cData.colleges
+          : FALLBACK_COLLEGES;
         setCollege(list.find((c) => c.code === code) || null);
       } catch {
         setCollege(FALLBACK_COLLEGES.find((c) => c.code === code) || null);

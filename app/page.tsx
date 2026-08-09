@@ -29,7 +29,13 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/colleges")
       .then((r) => r.json())
-      .then((d) => { if (d.success) setColleges(d.colleges); else setColleges(FALLBACK_COLLEGES); })
+      .then((d) => {
+        if (d.success && Array.isArray(d.colleges) && d.colleges.length > 0) {
+          setColleges(d.colleges);
+        } else {
+          setColleges(FALLBACK_COLLEGES);
+        }
+      })
       .catch(() => setColleges(FALLBACK_COLLEGES))
       .finally(() => setLoading(false));
   }, []);
