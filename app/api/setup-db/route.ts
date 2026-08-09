@@ -2,6 +2,12 @@ import { sql } from "@/lib/db";
 
 export async function GET() {
   try {
+    // Drop existing tables for a clean/fresh start as requested
+    await sql`DROP TABLE IF EXISTS queries CASCADE`;
+    await sql`DROP TABLE IF EXISTS events CASCADE`;
+    await sql`DROP TABLE IF EXISTS announcements CASCADE`;
+    await sql`DROP TABLE IF EXISTS colleges CASCADE`;
+
     await sql`
       CREATE TABLE IF NOT EXISTS colleges (
         id SERIAL PRIMARY KEY,
