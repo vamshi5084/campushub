@@ -2,14 +2,15 @@ import { sql } from "@/lib/db";
 
 export async function GET() {
   try {
-    // Drop existing tables for a clean/fresh start as requested
+    // Create tables fresh (drop first for clean state)
     await sql`DROP TABLE IF EXISTS queries CASCADE`;
     await sql`DROP TABLE IF EXISTS events CASCADE`;
     await sql`DROP TABLE IF EXISTS announcements CASCADE`;
     await sql`DROP TABLE IF EXISTS colleges CASCADE`;
 
+    // colleges table
     await sql`
-      CREATE TABLE IF NOT EXISTS colleges (
+      CREATE TABLE colleges (
         id SERIAL PRIMARY KEY,
         code TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
@@ -19,18 +20,17 @@ export async function GET() {
       )
     `;
 
-    // Seed the 3 colleges
+    // Seed 3 colleges
     await sql`
       INSERT INTO colleges (code, name, short_name, color, admin_password) VALUES
         ('vignan', 'Vignan Institute of Technology and Science', 'VITS', '#6366f1', 'vignan@123'),
         ('cbit',   'Chaitanya Bharathi Institute of Technology', 'CBIT', '#0ea5e9', 'cbit@123'),
         ('anurag', 'Anurag University',                          'AU',   '#10b981', 'anurag@123')
-      ON CONFLICT (code) DO NOTHING
     `;
 
-    // Create announcements with college_id
+    // announcements table
     await sql`
-      CREATE TABLE IF NOT EXISTS announcements (
+      CREATE TABLE announcements (
         id TEXT PRIMARY KEY,
         college_id INT REFERENCES colleges(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
@@ -42,9 +42,9 @@ export async function GET() {
       )
     `;
 
-    // Create events with college_id
+    // events table
     await sql`
-      CREATE TABLE IF NOT EXISTS events (
+      CREATE TABLE events (
         id TEXT PRIMARY KEY,
         college_id INT REFERENCES colleges(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
@@ -59,9 +59,9 @@ export async function GET() {
       )
     `;
 
-    // Create queries with college_id + student_roll
+    // queries table
     await sql`
-      CREATE TABLE IF NOT EXISTS queries (
+      CREATE TABLE queries (
         id TEXT PRIMARY KEY,
         college_id INT REFERENCES colleges(id) ON DELETE CASCADE,
         student_roll TEXT NOT NULL,
@@ -74,50 +74,119 @@ export async function GET() {
       )
     `;
 
-    // Query seeded college IDs for scoped inserts
-    const collegesList = await sql`SELECT id, code FROM colleges`;
-    const vignan = collegesList.find((c: any) => c.code === 'vignan');
-    const cbit = collegesList.find((c: any) => c.code === 'cbit');
-    const anurag = collegesList.find((c: any) => c.code === 'anurag');
+    // Fetch inserted college IDs
+    const cols = await sql`SELECT id, code FROM colleges`;
+    const idOf = (code: string) => (cols.find((c: any) => c.code === code)?.id ?? 1);
 
-    const vignanId = vignan ? vignan.id : 1;
-    const cbitId = cbit ? cbit.id : 2;
-    const anuragId = anurag ? anurag.id : 3;
+    const vId = idOf('vignan');
+    const cId = idOf('cbit');
+    const aId = idOf('anurag');
+    const now = Date.now();
 
-    // Seed Scoped Announcements
+    // ---------- ANNOUNCEMENTS ----------
     await sql`
       INSERT INTO announcements (id, college_id, title, description, category, department, date, urgent) VALUES
-        ('vig-ann-1', ${vignanId}, 'End Semester Examinations Timetable', 'Timetable for VITS End Semester Exams starting Aug 25 is published on the portal.', 'Exam', 'Exam Branch', '2026-08-25', true),
-        ('vig-ann-2', ${vignanId}, 'Vignan Placement Orientation', 'Orientation session for all pre-final year students regarding upcoming campus recruitment drives.', 'Placement', 'T&P Cell', '2026-08-14', false),
-        ('vig-ann-3', ${vignanId}, 'Library Extended Revision Timings', 'Central Library will remain open until 10:00 PM for study and revision during exam weeks.', 'General', 'Library Admin', '2026-08-16', false),
-        
-        ('cbit-ann-1', ${cbitId}, 'CBIT Sudhee Fest Registrations', 'Annual national technical symposium registrations are officially open. Register online.', 'General', 'Student Council', '2026-09-02', false),
-        ('cbit-ann-2', ${cbitId}, 'Mid Term Exam Hall Ticket Release', 'Students can download their mid-term exam hall tickets from next Monday from the portal.', 'Exam', 'Exam Branch', '2026-08-18', true),
-        ('cbit-ann-3', ${cbitId}, 'CBIT Robotics Club Workshop', 'Hands-on workshop on Arduino and IoT systems scheduled this Friday in labs.', 'Academic', 'Robotics Club', '2026-08-15', false),
+        -- Vignan
+        ('vig-a1', ${vId},
+          'End Semester Exam Timetable Released',
+          'The End Semester Examination timetable for all branches has been published on the college portal. Students are advised to download their hall tickets by 20th August.',
+          'Exam', 'Examination Branch', '2026-08-25', true),
+        ('vig-a2', ${vId},
+          'Campus Recruitment Drive – TCS',
+          'TCS will be conducting on-campus recruitment for B.Tech final year students on September 5th. Eligible students with 65% aggregate and above may register through T&P Cell.',
+          'Placement', 'Training & Placement Cell', '2026-09-05', false),
+        ('vig-a3', ${vId},
+          'Library Extended Hours During Exams',
+          'The Central Library will remain open till 10:00 PM from 18th August to 10th September to facilitate exam preparation.',
+          'General', 'Library Administration', '2026-08-18', false),
 
-        ('anu-ann-1', ${anuragId}, 'Anurag Hackathon 2026 Guidelines', 'Guidelines and team registration details for Anurag University Hackathon.', 'Academic', 'CSE Dept', '2026-08-20', true),
-        ('anu-ann-2', ${anuragId}, 'Campus Sports Meet Registration', 'Annual sports championships registrations are open for cricket, football, and basket.', 'General', 'Physical Education', '2026-08-13', false),
-        ('anu-ann-3', ${anuragId}, 'Anurag Entrepreneurship Bootcamp', 'Learn how to pitch ideas to venture capitalists. Limited seats available.', 'General', 'E-Cell', '2026-08-17', false)
-      ON CONFLICT (id) DO NOTHING
+        -- CBIT
+        ('cbit-a1', ${cId},
+          'Sudhee 2026 – National Tech Fest Registrations Open',
+          'CBIT''s annual national-level technical symposium "Sudhee 2026" registrations are now open. Students from all colleges may participate in coding, robotics, paper presentations and more.',
+          'General', 'Student Council', '2026-09-02', false),
+        ('cbit-a2', ${cId},
+          'Mid-Term Exam Hall Tickets Available',
+          'Hall tickets for Mid-Term Examinations starting August 22nd are now available on the student portal. Students must carry a physical copy to the exam hall.',
+          'Exam', 'Examination Branch', '2026-08-20', true),
+        ('cbit-a3', ${cId},
+          'CBIT Robotics & IoT Workshop',
+          'A two-day hands-on workshop on Arduino, IoT sensors, and embedded systems will be conducted on 16th and 17th August in the Electronics Lab.',
+          'Academic', 'Robotics Club', '2026-08-16', false),
+
+        -- Anurag
+        ('anu-a1', ${aId},
+          'Anurag Hackathon 2026 – Problem Statements Released',
+          'Official problem statements for Anurag University''s 36-hour hackathon are now live. Teams of 3–4 can register via the official portal before 15th August.',
+          'Academic', 'CSE Department', '2026-08-20', true),
+        ('anu-a2', ${aId},
+          'Annual Sports Championship Registrations',
+          'Registrations are open for Annual Sports Meet 2026. Events include cricket, football, basketball, badminton, and athletics. Register through the Physical Education Office.',
+          'General', 'Physical Education Dept', '2026-08-13', false),
+        ('anu-a3', ${aId},
+          'Entrepreneurship Bootcamp – Limited Seats',
+          'E-Cell is hosting a 2-day bootcamp for student entrepreneurs with mentorship from industry leaders and VCs. Only 40 seats available – apply now.',
+          'General', 'Entrepreneurship Cell', '2026-08-17', false)
     `;
 
-    // Seed Scoped Events
+    // ---------- EVENTS ----------
     await sql`
       INSERT INTO events (id, college_id, title, description, category, department, date, time, venue, registration_link, created_at) VALUES
-        ('vig-evt-1', ${vignanId}, 'AeroDesign Challenge Workshop', 'Learn basic aerodynamic designing using modern simulation software.', 'Technical', 'Mechanical Dept', '2026-08-22', '10:00 AM - 04:00 PM', 'Seminar Hall 2', 'https://vignan.ac.in', ${Date.now()}),
-        ('vig-evt-2', ${vignanId}, 'Independence Day Celebrations', 'Cultural performances and flag hoisting ceremony at central ground.', 'Cultural', 'Student Activities', '2026-08-15', '08:30 AM Onwards', 'Central Plaza', '', ${Date.now()}),
+        -- Vignan
+        ('vig-e1', ${vId},
+          'AeroDesign Challenge Workshop',
+          'A practical workshop on aerodynamic design using simulation tools like ANSYS and SolidWorks. Open to all Mechanical and Civil engineering students.',
+          'Technical', 'Mechanical Department', '2026-08-22', '10:00 AM – 04:00 PM', 'Seminar Hall 2',
+          'https://vignan.ac.in/events', ${now}),
+        ('vig-e2', ${vId},
+          '78th Independence Day Celebrations',
+          'Flag hoisting ceremony followed by cultural performances, NCC parade, and patriotic song competition at the Central Ground.',
+          'Cultural', 'Student Activities', '2026-08-15', '08:30 AM Onwards', 'Central Ground',
+          '', ${now}),
+        ('vig-e3', ${vId},
+          'National Science Day Guest Lecture',
+          'Distinguished lecture by Dr. Ravi Shankar, Senior Scientist at DRDO, on "Future of Materials Science and Defense Technology".',
+          'Academic', 'Science & Humanities Dept', '2026-08-28', '11:00 AM – 01:00 PM', 'Auditorium Block A',
+          '', ${now}),
 
-        ('cbit-evt-1', ${cbitId}, 'Smart India Hackathon Internal Hack', 'Internal hackathon to select college representatives for SIH 2026.', 'Technical', 'CSE & IT Dept', '2026-08-19', '09:00 AM - 05:00 PM', 'IoT Research Lab', 'https://cbit.ac.in', ${Date.now()}),
-        ('cbit-evt-2', ${cbitId}, 'CBIT Alumni Reunion Meet', 'Interactive panel session with top alumni working in tech.', 'Placement', 'Alumni Relations', '2026-08-26', '03:00 PM - 06:00 PM', 'Main Auditorium', '', ${Date.now()}),
+        -- CBIT
+        ('cbit-e1', ${cId},
+          'Smart India Hackathon Internal Selection',
+          'Internal 24-hour hackathon to select CBIT''s representation team for SIH 2026 Grand Finale. Open to all B.Tech and M.Tech students.',
+          'Technical', 'CSE & IT Department', '2026-08-19', '09:00 AM – Next Day 09:00 AM', 'Innovation & Incubation Lab',
+          'https://cbit.ac.in/sih', ${now}),
+        ('cbit-e2', ${cId},
+          'Alumni Connect – Panel Discussion on Industry Trends',
+          'Interactive Q&A and panel discussion with top CBIT alumni working in Google, Microsoft, Amazon, and leading startups.',
+          'Placement', 'Alumni Relations Cell', '2026-08-26', '03:00 PM – 06:00 PM', 'Main Auditorium',
+          '', ${now}),
+        ('cbit-e3', ${cId},
+          'Cultural Night – Sudhee Pre-Fest',
+          'Music, dance, drama and standup comedy night as a warm-up for the Sudhee 2026 Tech Fest. Open to all students.',
+          'Cultural', 'Cultural Club', '2026-09-01', '06:00 PM – 09:30 PM', 'Open Air Amphitheatre',
+          '', ${now}),
 
-        ('anu-evt-1', ${anuragId}, 'AI & Machine Learning Symposium', 'Guest lectures from leading data scientists on future AI models.', 'Technical', 'AI & ML Dept', '2026-08-23', '10:00 AM - 03:00 PM', 'Block C Auditorium', 'https://anurag.edu.in', ${Date.now()}),
-        ('anu-evt-2', ${anuragId}, 'Anurag Cultural Music Fest', 'Battle of bands and classical music performances by students.', 'Cultural', 'Music Club', '2026-08-29', '05:00 PM - 08:30 PM', 'Open Air Theatre', '', ${Date.now()})
-      ON CONFLICT (id) DO NOTHING
+        -- Anurag
+        ('anu-e1', ${aId},
+          'AI & Machine Learning Symposium 2026',
+          'Day-long symposium featuring keynote talks from leading AI researchers, paper presentations by students, and live demo competitions.',
+          'Technical', 'AI & ML Department', '2026-08-23', '09:30 AM – 04:00 PM', 'Block C Auditorium',
+          'https://anurag.edu.in/ai-symposium', ${now}),
+        ('anu-e2', ${aId},
+          'Anurag Cultural Fest – Rhythm 2026',
+          'Annual cultural festival featuring battle of bands, western and classical dance performances, fashion walk, and street plays.',
+          'Cultural', 'Cultural Committee', '2026-08-29', '05:00 PM – 09:30 PM', 'Open Air Theatre',
+          '', ${now}),
+        ('anu-e3', ${aId},
+          'Industry Visit – Cyient Technologies',
+          'Guided industrial visit for ECE and EEE 3rd year students to Cyient Technologies, Hyderabad. Registration mandatory by 20th August.',
+          'Academic', 'ECE Department', '2026-09-03', '08:00 AM – 06:00 PM', 'Departing from Main Gate',
+          'https://anurag.edu.in/visits', ${now})
     `;
 
     return Response.json({
       success: true,
-      message: "Database setup complete! Tables created and seeded with announcements, events, and credentials for all colleges.",
+      message: "Database initialized! Colleges, announcements and events seeded successfully for Vignan, CBIT and Anurag.",
     });
   } catch (error) {
     console.error("Setup DB error:", error);
